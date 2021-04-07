@@ -98,12 +98,13 @@ implementation
       begin
         for j := 0 to Pred(lines.Count) do
         begin
-          if Str(lines[j]).BeginsWith(projectNames[i]) then
+          if Str.BeginsWith(lines[j], projectNames[i]) then
           begin
             Str.Split(lines[j], ':', name, filePath);
-            filePath := STR.Trim(filePath);
+            filePath := Str.Trim(filePath);
 
-            aList.Add(filePath);
+            SetLength(aList, Length(aList) + 1);
+            aList[High(aList)] := filePath;
           end;
         end;
       end;
@@ -153,7 +154,7 @@ implementation
       begin
         for j := 0 to Pred(lines.Count) do
         begin
-          if STR(lines[j]).BeginsWith(projectNames[i]) then
+          if Str.BeginsWith(lines[j], projectNames[i]) then
           begin
             STR.Split(lines[j], ':', name, filePath);
             filePath := STR.Trim(filePath);
@@ -208,7 +209,10 @@ implementation
 
       if (element.Name = 'Projects')
        and element.HasAttribute('Name', value) and targets.Contains(value) then
-        aList.Add(STR.FromUtf8(projectsXml.Nodes[i].Text));
+      begin
+        SetLength(aList, Length(aList) + 1);
+        aList[High(aList)] := Str.FromUtf8(projectsXml.Nodes[i].Text);
+      end;
     end;
   end;
 
@@ -279,7 +283,10 @@ implementation
     begin
       element := itemGroupXml.Nodes[i].AsElement;
       if element.HasAttribute('Include', value) then
-        aList.Add(STR.FromUTF8(value));
+      begin
+        SetLength(aList, Length(aList) + 1);
+        aList[High(aList)] := Str.FromUTF8(value);
+      end;
     end;
   end;
 
@@ -326,7 +333,7 @@ implementation
       EXIT;
     end;
 
-    firstNewIdx := aList.Count;
+    firstNewIdx := Length(aList);
 
     ext := ExtractFileExt(aFilename);
 
@@ -358,7 +365,7 @@ implementation
       //  path to the project group file).
 
       basePath := ExtractFilePath(aFilename);
-      for i := firstNewIdx to Pred(aList.Count) do
+      for i := firstNewIdx to High(aList) do
       begin
         filePath := aList[i];
         if NOT Path.IsAbsolute(filePath) then

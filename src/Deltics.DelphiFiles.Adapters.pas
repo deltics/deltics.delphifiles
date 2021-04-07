@@ -25,6 +25,7 @@ implementation
 
   uses
     SysUtils,
+    Deltics.Strings,
     Deltics.DelphiFiles.Adapters.DOF,
     Deltics.DelphiFiles.Adapters.DPROJ;
 
@@ -37,7 +38,7 @@ implementation
     result    := NIL;
     filename  := aFilename;
 
-    ext := ExtractFileExt(filename).ToLower;
+    ext := Str.Lowercase(ExtractFileExt(filename));
     if (ext = '.dpr') then
     begin
       if FileExists(ChangeFileExt(filename, '.dproj')) then
@@ -46,9 +47,9 @@ implementation
         filename := ChangeFileExt(filename, '.bdsproj')
       else if FileExists(ChangeFileExt(filename, '.dof')) then
         filename := ChangeFileExt(filename, '.dof');
-    end;
 
-    ext := ExtractFileExt(filename).ToLower;
+      ext := Str.Lowercase(ExtractFileExt(filename));
+    end;
 
     if ext = '.dproj' then
       result := DPROJ.Create(filename)

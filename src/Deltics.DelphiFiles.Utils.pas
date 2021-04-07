@@ -18,6 +18,7 @@ interface
 implementation
 
   uses
+    Deltics.Exceptions,
     Deltics.IO.FileSearch,
     Deltics.Strings,
     Deltics.DelphiFiles.ProjectGroup;
@@ -39,7 +40,7 @@ implementation
 
     for i := 0 to Pred(files.Count) do
     begin
-      filename := files[i].ToLower;
+      filename := Str.Lowercase(files[i]);
       result.Add(filename)
     end;
 
@@ -65,7 +66,7 @@ implementation
   begin
     result := TStringList.CreateManaged;
 
-    if NOT ExtractFileExt(aFilename).EqualsText('.dpr') then
+    if NOT Str.SameText(ExtractFileExt(aFilename), '.dpr') then
       raise EArgumentException.CreateFmt('''%s'' is not a valid project filename', [aFilename]);
 
     CheckExtension('.dproj');

@@ -151,10 +151,10 @@ implementation
       if NOT FindBuildConfig(aBuild, aPlatform, config) then
       begin
         config  := CreateBuildConfig(aBuild, aPlatform);
-        newPath := STR.Concat([aPath, '$(DCC_UnitSearchPath)'], ';');
+        newPath := Str.Concat([aPath, '$(DCC_UnitSearchPath)'], ';');
       end;
 
-      emptyPath := newPath.IsEmpty or newPath.EqualsText('$(DCC_UnitSearchPath)');
+      emptyPath := (newPath = '') or Str.SameText(newPath, '$(DCC_UnitSearchPath)');
 
       if NOT emptyPath then
       begin
@@ -194,12 +194,12 @@ implementation
   begin
     result := aBuild;
 
-    if result.IsNotEmpty then
+    if result <> '' then
     begin
       project := self.get_Project;
       for i := 0 to High(project.BuildConfigs) do
       begin
-        if project.BuildConfigs[i].Name.EqualsText(aBuild) then
+        if Str.SameText(project.BuildConfigs[i].Name, aBuild) then
         begin
           result := project.BuildConfigs[i].Key;
           BREAK;
@@ -241,16 +241,18 @@ implementation
   function DPROJ.CreateBuildConfig(const aBuild, aPlatform: String): IXmlElement;
   var
     condition: IXmlAttribute;
-    configs: IXmlNodeSelection;
+    project: IXmlElement;
+    lastConfig: IXmlNode;
   begin
     condition := Xml.Attribute('Condition', Utf8.FromString(ConfigKey(aBuild, aPlatform)));
 
     result := Xml.Element('PropertyGroup');
     result.Add(condition);
 
-    configs := fXml.SelectNodes('Project/PropertyGroup');
+    project     := fXml.SelectElement('Project');
+    lastConfig  := fXml.SelectNodes('Project/PropertyGroup').Last;
 
-    configs.Last.Parent.AsElement.Insert(result).After(configs.Last);
+    project.Insert(result).After(lastConfig);
   end;
 
 

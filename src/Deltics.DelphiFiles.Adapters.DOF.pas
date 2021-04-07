@@ -85,21 +85,21 @@ implementation
     begin
       entry := fContent[i];
 
-      if entry.BeginsWith('[') then
+      if Str.BeginsWith(entry, '[') then
       begin
         if inSection then
           EXIT;
 
-        inSection := entry.EqualsText('[' + aSection + ']');
+        inSection := Str.SameText(entry, '[' + aSection + ']');
         CONTINUE;
       end;
 
       if NOT inSection then
         CONTINUE;
 
-      if entry.BeginsWithText(aSetting + '=') then
+      if Str.BeginsWithText(entry, aSetting + '=') then
       begin
-        entry.Split('=', key, value);
+        Str.Split(entry, '=', key, value);
         result := value;
         EXIT;
       end;
@@ -111,7 +111,7 @@ implementation
                              const aPlatform: String): String;
   begin
     result := '';
-    if NOT aPlatform.EqualsText('win32') then
+    if NOT Str.SameText(aPlatform, 'win32') then
       EXIT;
 
     OpenProject;
@@ -138,7 +138,7 @@ implementation
                               const aBuild: String;
                               const aPlatform: String);
   begin
-    if NOT aPlatform.IsEmpty then
+    if (aPlatform <> '') and NOT Str.SameText(aPlatform, 'win32') then
       EXIT;
 
     OpenProject;
@@ -166,21 +166,21 @@ implementation
     begin
       entry := fContent[i];
 
-      if entry.BeginsWith('[') then
+      if Str.BeginsWith(entry, '[') then
       begin
         if inSection then
           EXIT;
 
-        inSection := entry.EqualsText('[' + aSection + ']');
+        inSection := Str.SameText(entry, '[' + aSection + ']');
         CONTINUE;
       end;
 
       if NOT inSection then
         CONTINUE;
 
-      if entry.BeginsWithText(aSetting + '=') then
+      if Str.BeginsWithText(entry, aSetting + '=') then
       begin
-        entry.Split('=', key, value);
+        Str.Split(entry, '=', key, value);
         fContent[i] := key + '=' + aValue;
         EXIT;
       end;
