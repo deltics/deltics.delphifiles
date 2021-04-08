@@ -23,7 +23,7 @@ interface
       function DoGetSearchPath(const aPlatform: String; const aBuild: String): String; override;
       procedure DoSetSearchPath(const aPlatform: String; const aBuild: String; const aValue: String); override;
     private
-      fXml: IXmlDocument;
+      fDoc: IXmlDocument;
       function CreateBuildConfig(const aPlatform, aBuild: String): IXmlElement;
       function FindBuildConfig(const aPlatform, aBuild: String; var aElement: IXmlElement): Boolean;
       function BuildKey(const aBuild: String): String;
@@ -33,6 +33,8 @@ interface
       procedure DoInit(const aProject: TProject); override;
       procedure DoOpen; override;
       procedure DoSave; override;
+    public
+      property Doc: IXmlDocument read fDoc;
     end;
 
 
@@ -170,8 +172,8 @@ implementation
     result := Xml.Element('PropertyGroup');
     result.Add(condition);
 
-    project     := fXml.SelectElement('Project');
-    lastConfig  := fXml.SelectNodes('Project/PropertyGroup').Last;
+    project     := fDoc.SelectElement('Project');
+    lastConfig  := fDoc.SelectNodes('Project/PropertyGroup').Last;
 
     project.Insert(result).After(lastConfig);
   end;
@@ -179,7 +181,7 @@ implementation
 
   procedure DPROJ.DoClose;
   begin
-    fXml := NIL;
+    fDoc := NIL;
   end;
 
 
@@ -223,13 +225,13 @@ implementation
 
   procedure DPROJ.DoOpen;
   begin
-    Xml.Load(fXml).FromFile(Filename);
+    Xml.Load(fDoc).FromFile(Filename);
   end;
 
 
   procedure DPROJ.DoSave;
   begin
-    fXml.SaveToFile(Filename);
+    Doc.SaveToFile(Filename);
   end;
 
 
@@ -245,7 +247,7 @@ implementation
     aElement  := NIL;
 
     conditionKey  := ConfigKey(aPlatform, aBuild);
-    configs       := fXml.SelectElements('Project/PropertyGroup');
+    configs       := fDoc.SelectElements('Project/PropertyGroup');
 
     for i := 0 to Pred(configs.Count) do
     begin

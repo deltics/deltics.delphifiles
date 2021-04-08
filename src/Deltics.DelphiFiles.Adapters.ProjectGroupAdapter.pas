@@ -101,9 +101,15 @@ implementation
     if NOT Assigned(aFilenames) then
       aFilenames := TStringList.CreateManaged;
 
-    DoGetProjectFilenames(aFilenames);
+    OpenFile;
+    try
+      DoGetProjectFilenames(aFilenames);
 
-    result := ConvertToAbsolute(aFilenames);
+      result := ConvertToAbsolute(aFilenames);
+
+    finally
+      CloseFile;
+    end;
   end;
 
 
@@ -112,9 +118,15 @@ implementation
     if NOT Assigned(aFilenames) then
       aFilenames := TStringList.CreateManaged;
 
-    DoGetProjectSourceFilenames(aFilenames);
+    OpenFile;
+    try
+      DoGetProjectSourceFilenames(aFilenames);
 
-    result := ConvertToAbsolute(aFilenames);
+      result := ConvertToAbsolute(aFilenames);
+
+    finally
+      CloseFile;
+    end;
   end;
 
 
