@@ -1,4 +1,6 @@
 
+{$i deltics.delphifiles.inc}
+
   unit Deltics.DelphiFiles.Project;
 
 interface
@@ -12,23 +14,25 @@ interface
 
   type
     TProject = class(TComInterfacedObject, IProject)
-    private
-      fAdapter: IProjectFileAdapter;
-      fBuildConfigs: TBuildConfigArray;
-      fFilename: String;
-      fPlatforms: StringArray;
+    protected // IProject
       function get_BuildConfigs: TBuildConfigArray;
       function get_Filename: String;
       function get_Platforms: StringArray;
       function get_SearchPath(const aBuild: String; const aPlatform: String): String;
       procedure set_SearchPath(const aBuild: String; const aPlatform: String; const aValue: String);
 //      procedure AddSearchPath(const aPath: String; const aBuild, aPlatform: String);
+
+    private
+      fAdapter: IProjectAdapter;
+      fBuildConfigs: TBuildConfigArray;
+      fPlatforms: StringArray;
     public
+      constructor Create(const aAdapter: IProjectAdapter);
       procedure AddBuildConfig(const aKey, aName, aParentKey: String);
       procedure AddPlatform(const aValue: String);
-      property Adapter: IProjectFileAdapter read fAdapter write fAdapter;
+      property Adapter: IProjectAdapter read fAdapter write fAdapter;
       property BuildConfigs: TBuildConfigArray read fBuildConfigs;
-      property Filename: String read fFilename write fFilename;
+      property Filename: String read get_Filename;
       property Platforms: StringArray read fPlatforms;
     end;
 
@@ -60,6 +64,15 @@ implementation
   end;
 
 
+  constructor TProject.Create(const aAdapter: IProjectAdapter);
+  begin
+    inherited Create;
+
+    fAdapter := aAdapter;
+  end;
+
+
+
 //  procedure TProject.AddSearchPath(const aPath: String;
 //                                   const aBuild: String;
 //                                   const aPlatform: String);
@@ -88,7 +101,7 @@ implementation
 
   function TProject.get_Filename: String;
   begin
-    result := fFilename;
+    result := fAdapter.Filename;
   end;
 
 
@@ -100,13 +113,13 @@ implementation
 
   function TProject.get_SearchPath(const aBuild, aPlatform: String): String;
   begin
-    result := Adapter.GetSearchPath(aBuild, aPlatform);
+    result := Adapter.SearchPath[aPlatform, aBuild];
   end;
 
 
   procedure TProject.set_SearchPath(const aBuild, aPlatform, aValue: String);
   begin
-    Adapter.SetSearchPath(aValue, aBuild, aPlatform);
+    Adapter.SearchPath[aPlatform, aBuild] := aValue;
   end;
 
 

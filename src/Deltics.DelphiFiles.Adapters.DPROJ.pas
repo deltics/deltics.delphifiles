@@ -1,5 +1,8 @@
 
+{$i deltics.delphifiles.inc}
+
   unit Deltics.DelphiFiles.Adapters.DPROJ;
+
 
 interface
 
@@ -9,131 +12,57 @@ interface
     Deltics.Strings,
     Deltics.Xml,
     Deltics.DelphiFiles.Adapters,
+    Deltics.DelphiFiles.Adapters.ProjectAdapter,
     Deltics.DelphiFiles.Interfaces,
     Deltics.DelphiFiles.Project;
 
 
   type
-    DPROJ = class(TComInterfacedObject, IProjectFileAdapter)
+    DPROJ = class(TProjectAdapter)
+    protected
+      function DoGetSearchPath(const aPlatform: String; const aBuild: String): String; override;
+      procedure DoSetSearchPath(const aPlatform: String; const aBuild: String; const aValue: String); override;
     private
-      fFilename: String;
-      function get_Project: IProject;
-      function GetSearchPath(const aBuild: String = ''; const aPlatform: String = ''): String;
-      procedure SetSearchPath(const aPath: String; const aBuild: String = ''; const aPlatform: String = '');
-    private
-      fOpenCount: Integer;
       fXml: IXmlDocument;
-      function CreateBuildConfig(const aBuild, aPlatform: String): IXmlElement;
-      function FindBuildConfig(const aBuild, aPlatform: String; var aElement: IXmlElement): Boolean;
+      function CreateBuildConfig(const aPlatform, aBuild: String): IXmlElement;
+      function FindBuildConfig(const aPlatform, aBuild: String; var aElement: IXmlElement): Boolean;
       function BuildKey(const aBuild: String): String;
-      function ConfigKey(const aBuild, aPlatform: String): String;
-      procedure CloseProject(const aSaveChanges: Boolean = FALSE);
-      procedure OpenProject;
-//      procedure SaveProject;
-    public
-      constructor Create(const aFilename: String);
-      property Filename: String read fFilename;
+      function ConfigKey(const aPlatform: String; const aBuild: String): String;
+    protected
+      procedure DoClose; override;
+      procedure DoInit(const aProject: TProject); override;
+      procedure DoOpen; override;
+      procedure DoSave; override;
     end;
 
 
 implementation
 
 
-  constructor DPROJ.Create(const aFilename: String);
-  begin
-    inherited Create;
-
-    fFilename := aFilename;
-  end;
-
-
-  function DPROJ.get_Project: IProject;
-  var
-    i: Integer;
-    doc: IXmlDocument;
-    platforms: IXmlElement;
-    buildconfigs: IXmlElementSelection;
-    config: IXmlElement;
-    key: String;
-    name: String;
-    parent: IXmlElement;
-    parentKey: String;
-    project: TProject;
-  begin
-    project := TProject.Create;
-    project.Adapter   := self;
-    project.Filename  := Filename;
-
-    result  := project;
-
-    Xml.Load(doc).FromFile(Filename);
-
-    platforms := doc.SelectNode('Project/ProjectExtensions/BorlandProject/Platforms') as IXmlElement;
-    for i := 0 to Pred(platforms.Nodes.Count) do
-    begin
-      if platforms.Nodes[i].Text = 'True' then
-        project.AddPlatform(STR.FromUtf8(platforms.Nodes[i].AsElement.Attributes[0].Value));
-    end;
-
-    buildconfigs := doc.SelectElements('Project/ItemGroup/BuildConfiguration');
-    for i := 0 to Pred(buildconfigs.Count) do
-    begin
-      config := buildConfigs[i];
-
-      name      := STR.FromUtf8(config.Attributes.ItemByName('Include').AsAttribute.Value);
-      key       := Str.FromUtf8(config.SelectNode('Key').Text);
-      parentKey := '';
-
-      if config.ContainsElement('CfgParent', parent) then
-        parentKey := Str.FromUtf8(parent.Text);
-
-      project.AddBuildConfig(key, name, parentKey);
-    end;
-  end;
-
-
-  procedure DPROJ.OpenProject;
-  begin
-    Inc(fOpenCount);
-
-    if fOpenCount = 1 then
-      Xml.Load(fXml).FromFile(Filename);
-  end;
-
-
-  function DPROJ.GetSearchPath(const aBuild: String;
-                               const aPlatform: String): String;
+  function DPROJ.DoGetSearchPath(const aPlatform: String;
+                                 const aBuild: String): String;
   var
     config: IXmlElement;
     path: IXmlElement;
   begin
     result := '';
 
-    OpenProject;
+    OpenFile;
     try
-      if FindBuildConfig(aBuild, aPlatform, config)
+      if FindBuildConfig(aPlatform, aBuild, config)
       and config.ContainsElement('DCC_UnitSearchPath', path) then
         result := Str.FromUtf8(path.Text);
 
     finally
-      CloseProject;
+      CloseFile;
     end;
   end;
 
 
 
-//  procedure DPROJ.SaveProject;
-//  begin
-//    // TODO: Make backup of existing project file
-//
-//    fXml.SaveToFile(Filename);
-//  end;
-
-
-
-  procedure DPROJ.SetSearchPath(const aPath: String;
-                                const aBuild: String;
-                                const aPlatform: String);
+  procedure DPROJ.DoSetSearchPath(const aPlatform: String;
+                                  const aBuild: String;
+                                  const aValue: String);
   var
     i: Integer;
     config: IXmlElement;
@@ -143,15 +72,18 @@ implementation
     emptyPath: Boolean;
     emptyConfig: Boolean;
   begin
-    OpenProject;
+    OpenFile;
     try
-      oldPath := GetSearchPath(aBuild, aPlatform);
-      newPath := aPath;
+      oldPath := DoGetSearchPath(aPlatform, aBuild);
+      newPath := aValue;
 
-      if NOT FindBuildConfig(aBuild, aPlatform, config) then
+      if newPath = oldPath then
+        EXIT;
+
+      if NOT FindBuildConfig(aPlatform, aBuild, config) then
       begin
-        config  := CreateBuildConfig(aBuild, aPlatform);
-        newPath := Str.Concat([aPath, '$(DCC_UnitSearchPath)'], ';');
+        config  := CreateBuildConfig(aPlatform, aBuild);
+        newPath := Str.Concat([aValue, '$(DCC_UnitSearchPath)'], ';');
       end;
 
       emptyPath := (newPath = '') or Str.SameText(newPath, '$(DCC_UnitSearchPath)');
@@ -180,8 +112,10 @@ implementation
       if emptyConfig then
         config.Delete;
 
+      HasChanges := TRUE;
+
     finally
-      CloseProject(TRUE);
+      CloseFile;
     end;
   end;
 
@@ -211,20 +145,7 @@ implementation
   end;
 
 
-  procedure DPROJ.CloseProject(const aSaveChanges: Boolean);
-  begin
-    Dec(fOpenCount);
-
-    if aSaveChanges then
-      fXml.SaveToFile(Filename);
-
-    if fOpenCount = 0 then
-      fXml := NIL;
-  end;
-
-
-
-  function DPROJ.ConfigKey(const aBuild, aPlatform: String): String;
+  function DPROJ.ConfigKey(const aPlatform, aBuild: String): String;
   var
     build: String;
   begin
@@ -238,13 +159,13 @@ implementation
 
 
 
-  function DPROJ.CreateBuildConfig(const aBuild, aPlatform: String): IXmlElement;
+  function DPROJ.CreateBuildConfig(const aPlatform, aBuild: String): IXmlElement;
   var
     condition: IXmlAttribute;
     project: IXmlElement;
     lastConfig: IXmlNode;
   begin
-    condition := Xml.Attribute('Condition', Utf8.FromString(ConfigKey(aBuild, aPlatform)));
+    condition := Xml.Attribute('Condition', Utf8.FromString(ConfigKey(aPlatform, aBuild)));
 
     result := Xml.Element('PropertyGroup');
     result.Add(condition);
@@ -256,7 +177,64 @@ implementation
   end;
 
 
-  function DPROJ.FindBuildConfig(const aBuild, aPlatform: String; var aElement: IXmlElement): Boolean;
+  procedure DPROJ.DoClose;
+  begin
+    fXml := NIL;
+  end;
+
+
+  procedure DPROJ.DoInit(const aProject: TProject);
+  var
+    i: Integer;
+    doc: IXmlDocument;
+    platforms: IXmlElement;
+    buildconfigs: IXmlElementSelection;
+    config: IXmlElement;
+    key: String;
+    name: String;
+    parent: IXmlElement;
+    parentKey: String;
+  begin
+    Xml.Load(doc).FromFile(Filename);
+
+    platforms := doc.SelectNode('Project/ProjectExtensions/BorlandProject/Platforms') as IXmlElement;
+    for i := 0 to Pred(platforms.Nodes.Count) do
+    begin
+      if platforms.Nodes[i].Text = 'True' then
+        aProject.AddPlatform(STR.FromUtf8(platforms.Nodes[i].AsElement.Attributes[0].Value));
+    end;
+
+    buildconfigs := doc.SelectElements('Project/ItemGroup/BuildConfiguration');
+    for i := 0 to Pred(buildconfigs.Count) do
+    begin
+      config := buildConfigs[i];
+
+      name      := STR.FromUtf8(config.Attributes.ItemByName('Include').AsAttribute.Value);
+      key       := Str.FromUtf8(config.SelectNode('Key').Text);
+      parentKey := '';
+
+      if config.ContainsElement('CfgParent', parent) then
+        parentKey := Str.FromUtf8(parent.Text);
+
+      aProject.AddBuildConfig(key, name, parentKey);
+    end;
+  end;
+
+
+  procedure DPROJ.DoOpen;
+  begin
+    Xml.Load(fXml).FromFile(Filename);
+  end;
+
+
+  procedure DPROJ.DoSave;
+  begin
+    fXml.SaveToFile(Filename);
+  end;
+
+
+
+  function DPROJ.FindBuildConfig(const aPlatform, aBuild: String; var aElement: IXmlElement): Boolean;
   var
     i: Integer;
     configs: IXmlElementSelection;
@@ -266,7 +244,7 @@ implementation
     result    := FALSE;
     aElement  := NIL;
 
-    conditionKey  := ConfigKey(aBuild, aPlatform);
+    conditionKey  := ConfigKey(aPlatform, aBuild);
     configs       := fXml.SelectElements('Project/PropertyGroup');
 
     for i := 0 to Pred(configs.Count) do

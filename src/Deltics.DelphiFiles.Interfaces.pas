@@ -7,6 +7,7 @@
 interface
 
   uses
+    Deltics.StringLists,
     Deltics.StringTypes;
 
 
@@ -23,6 +24,7 @@ interface
       function get_Key: String;
       function get_Name: String;
       function get_ParentKey: String;
+
       property Key: String read get_Key;
       property Name: String read get_Name;
       property ParentKey: String read get_ParentKey;
@@ -36,10 +38,18 @@ interface
       function get_Platforms: StringArray;
       function get_SearchPath(const aBuild: String; const aPlatform: String): String;
       procedure set_SearchPath(const aBuild: String; const aPlatform: String; const aValue: String);
+
       property BuildConfigs: TBuildConfigArray read get_BuildConfigs;
       property Filename: String read get_Filename;
       property Platforms: StringArray read get_Platforms;
       property SearchPath[const aBuild: String; const aPlatform: String]: String read get_SearchPath write set_SearchPath;
+    end;
+
+
+    IProjectGroup = interface
+    ['{03D3EA1B-63F8-47A3-AE8C-DD5636CC01A8}']
+      function GetProjectFilenames(var aFilenames: IStringList): Boolean;
+      function GetProjectSourceFilenames(var aFilenames: IStringList): Boolean;
     end;
 
 

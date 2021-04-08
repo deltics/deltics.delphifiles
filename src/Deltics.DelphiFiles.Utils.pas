@@ -1,4 +1,6 @@
 
+{$i deltics.delphifiles.inc}
+
   unit Deltics.DelphiFiles.Utils;
 
 interface
@@ -21,7 +23,7 @@ implementation
     Deltics.Exceptions,
     Deltics.IO.FileSearch,
     Deltics.Strings,
-    Deltics.DelphiFiles.ProjectGroup;
+    Deltics.DelphiFiles.Adapters;
 
 
   class function DelphiUtils.FindProjectSourceFiles(const aPath: String): IStringList;
@@ -30,6 +32,7 @@ implementation
     search: IFileSearch;
     files: IStringList;
     filename: String;
+    group: IProjectGroupAdapter;
   begin
     result := TStringList.CreateManaged;
     result.Unique := TRUE;
@@ -47,7 +50,8 @@ implementation
     search.Filename('*.bpg;*.bdsgroup;*.groupproj', TRUE).Execute;
 
     for i := 0 to Pred(files.Count) do
-      result.Add(TProjectGroup.GetProjectSourceFilenames(files[i]));
+      if FileAdapter(files[i], group) then
+        group.GetProjectSourceFilenames(result);
   end;
 
 

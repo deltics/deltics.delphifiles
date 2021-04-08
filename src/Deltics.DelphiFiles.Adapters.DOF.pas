@@ -1,72 +1,59 @@
 
+{$i deltics.delphifiles.inc}
+
   unit Deltics.DelphiFiles.Adapters.DOF;
+
 
 interface
 
   uses
-    IniFiles,
-    SysUtils,
-    Deltics.InterfacedObjects,
     Deltics.StringLists,
-    Deltics.Xml,
     Deltics.DelphiFiles.Adapters,
-    Deltics.DelphiFiles.Interfaces;
+    Deltics.DelphiFiles.Adapters.ProjectAdapter,
+    Deltics.DelphiFiles.Interfaces,
+    Deltics.DelphiFiles.Project;
 
 
   type
-    DOF = class(TComInterfacedObject, IProjectFileAdapter)
+    DOF = class(TProjectAdapter)
+    protected
+      function DoGetSearchPath(const aPlatform: String; const aBuild: String): String; override;
+      procedure DoSetSearchPath(const aPlatform: String; const aBuild: String; const aValue: String); override;
     private
-      fFilename: String;
-      function get_Project: IProject;
-      function GetSearchPath(const aBuild: String = ''; const aPlatform: String = ''): String;
-      procedure SetSearchPath(const aPath: String; const aBuild: String = ''; const aPlatform: String = '');
-    private
-      fOpenCount: Integer;
-      fContent: TStringList;
+      fContent: IStringList;
       function ReadSetting(const aSection, aSetting: String): String;
       procedure WriteSetting(const aSection, aSetting, aValue: String);
-      procedure CloseProject(const aSaveChanges: Boolean = FALSE);
-      procedure OpenProject;
-//      procedure SaveProject;
-    public
-      constructor Create(const aFilename: String);
-      property Filename: String read fFilename;
+    protected
+      procedure DoClose; override;
+      procedure DoInit(const aProject: TProject); override;
+      procedure DoOpen; override;
+      procedure DoSave; override;
     end;
 
 
 implementation
 
   uses
-    Deltics.Strings,
-    Deltics.DelphiFiles.Project;
+    Deltics.Strings;
 
 
-  constructor DOF.Create(const aFilename: String);
+  procedure DOF.DoInit(const aProject: TProject);
   begin
-    inherited Create;
+    inherited;
 
-    fFilename := aFilename;
   end;
 
 
-  function DOF.get_Project: IProject;
-  var
-    project: TProject;
+  procedure DOF.DoOpen;
   begin
-    project := TProject.Create;
-    project.Adapter   := self;
-    project.Filename  := Filename;
-
-    result  := project;
-  end;
-
-
-  procedure DOF.OpenProject;
-  begin
-    Inc(fOpenCount);
-
-    fContent  := TStringList.Create;
+    fContent := TStringList.CreateManaged;
     fContent.LoadFromFile(Filename);
+  end;
+
+
+  procedure DOF.DoSave;
+  begin
+    fContent.SaveToFile(Filename);
   end;
 
 
@@ -107,46 +94,37 @@ implementation
   end;
 
 
-  function DOF.GetSearchPath(const aBuild: String;
-                             const aPlatform: String): String;
+  function DOF.DoGetSearchPath(const aPlatform: String;
+                               const aBuild: String): String;
   begin
     result := '';
     if NOT Str.SameText(aPlatform, 'win32') then
       EXIT;
 
-    OpenProject;
+    OpenFile;
     try
       result := ReadSetting('Directories', 'SearchPath');
 
     finally
-      CloseProject;
+      CloseFile;
     end;
   end;
 
 
 
-//  procedure DPROJ.SaveProject;
-//  begin
-//    // TODO: Make backup of existing project file
-//
-//    fXml.SaveToFile(Filename);
-//  end;
-
-
-
-  procedure DOF.SetSearchPath(const aPath: String;
-                              const aBuild: String;
-                              const aPlatform: String);
+  procedure DOF.DoSetSearchPath(const aPlatform: String;
+                                const aBuild: String;
+                                const aValue: String);
   begin
     if (aPlatform <> '') and NOT Str.SameText(aPlatform, 'win32') then
       EXIT;
 
-    OpenProject;
+    OpenFile;
     try
-      WriteSetting('Directories', 'SearchPath', aPath);
+      WriteSetting('Directories', 'SearchPath', aValue);
 
     finally
-      CloseProject(TRUE);
+      CloseFile;
     end;
   end;
 
@@ -182,21 +160,18 @@ implementation
       begin
         Str.Split(entry, '=', key, value);
         fContent[i] := key + '=' + aValue;
+
+        HasChanges := value <> aValue;
+
         EXIT;
       end;
     end;
   end;
 
 
-  procedure DOF.CloseProject(const aSaveChanges: Boolean);
+  procedure DOF.DoClose;
   begin
-    Dec(fOpenCount);
-
-    if aSaveChanges then
-      fContent.SaveToFile(Filename);
-
-    if fOpenCount = 0 then
-      FreeAndNIL(fContent);
+    fContent := NIL;
   end;
 
 

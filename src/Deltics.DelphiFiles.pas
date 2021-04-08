@@ -21,6 +21,11 @@ interface
     end;
 
 
+    ProjectGroup = class
+      class function LoadFromFile(const aFilename: String): IProjectGroup;
+    end;
+
+
 
 
 implementation
@@ -35,13 +40,22 @@ implementation
 
   class function Project.LoadFromFile(const aFilename: String): IProject;
   var
-    adapter: IProjectFileAdapter;
+    adapter: IProjectAdapter;
   begin
-    result  := NIL;
-    adapter := ProjectAdapter(aFilename);
-
-    if Assigned(adapter) then
+    if FileAdapter(aFilename, adapter) then
       result := adapter.Project;
+  end;
+
+
+
+{ ProjectGroup }
+
+  class function ProjectGroup.LoadFromFile(const aFilename: String): IProjectGroup;
+  var
+    adapter: IProjectGroupAdapter;
+  begin
+    if FileAdapter(aFilename, adapter) then
+      result := adapter.ProjectGroup;
   end;
 
 
