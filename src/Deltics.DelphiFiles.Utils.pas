@@ -37,7 +37,9 @@ implementation
     result := TStringList.CreateManaged;
     result.Unique := TRUE;
 
-    search := FileSearch.Folder(aPath).Yielding.Files(files, TRUE);
+    search := FileSearch.Folder(aPath)
+                .Yielding.FullyQualified
+                .Yielding.Files(files, TRUE);
 
     search.Filename('*.dpr').Execute;
 
